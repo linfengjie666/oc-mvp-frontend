@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSE Economics - Opportunity Cost 练习</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: #34C759;
+        }
+        .btn-outline {
+            background: white;
+            border: 2px solid #007AFF;
+            color: #007AFF;
+        }
+        .btn-danger {
+            background: #FF3B30;
+        }
+        
+        /* Loading Spinner */
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007AFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Dashboard */
+        .dashboard-card {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #e5e5e5;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #007AFF;
+            transition: width 0.3s;
+        }
+        .progress-text {
+            font-size: 14px;
+            color: #666;
+        }
+        .weakness-box {
+            background: #FFF3CD;
+            border: 1px solid #FFCA28;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        .weakness-title {
+            color: #856404;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .weakness-desc {
+            font-size: 14px;
+            color: #856404;
+        }
+        .stable-box {
+            background: #D4EDDA;
+            border: 1px solid #28A745;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        .stable-title {
+            color: #155724;
+            font-weight: 600;
+        }
+        
+        /* Question */
+        .question-card {
+            margin-bottom: 16px;
+        }
+        .question-num {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .question-stem {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            white-space: pre-wrap;
+        }
+        .option {
+            padding: 14px;
+            border: 2px solid #e5e5e5;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .option:hover {
+            border-color: #007AFF;
+            background: #f0f7ff;
+        }
+        .option.selected {
+            border-color: #007AFF;
+            background: #e8f4ff;
+        }
+        .option-label {
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        
+        /* Result */
+        .result-card {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .result-percent {
+            font-size: 48px;
+            font-weight: 700;
+            color: #007AFF;
+        }
+        .result-label {
+            font-size: 14px;
+            color: #666;
+        }
+        .dim-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .dim-name {
+            width: 120px;
+            font-size: 14px;
+        }
+        .dim-bar {
+            flex: 1;
+            height: 8px;
+            background: #e5e5e5;
+            border-radius: 4px;
+            margin: 0 12px;
+            overflow: hidden;
+        }
+        .dim-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .dim-fill.ok { background: #34C759; }
+        .dim-fill.weak { background: #FF3B30; }
+        .dim-fill.attention { background: #FF9500; }
+        .dim-fill.insufficient { background: #8E8E93; }
+        .dim-percent {
+            width: 50px;
+            text-align: right;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        /* Message */
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .message-info { background: #E3F2FD; color: #1565C0; }
+        .message-success { background: #E8F5E9; color: #2E7D32; }
+        .message-warning { background: #FFF3E0; color: #E65100; }
+        .message-error { background: #FFEBEE; color: #C62828; }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        /* Hidden */
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 登录页 -->
+        <div id="page-login">
+            <h1>DSE Economics</h1>
+            <p class="subtitle">機會成本 (Opportunity Cost) 練習</p>
+            <p>正在加載...</p>
+        </div>
+        
+        <!-- Dashboard -->
+        <div id="page-dashboard" class="hidden">
+            <h1>1.2 機會成本</h1>
+            <p class="subtitle" id="dashboard-user"></p>
+            
+            <div class="dashboard-card">
+                <p class="progress-text">Micro Session 進度</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="buffer-progress" style="width: 0%"></div>
+                </div>
+                <p class="progress-text" id="buffer-text">0 / 3</p>
+            </div>
+            
+            <div id="weakness-display"></div>
+            
+            <button class="btn btn-secondary" onclick="goToMicro()">開始練習</button>
+            <button class="btn btn-outline" onclick="refreshDashboard()">重新整理</button>
+        </div>
+        
+        <!-- Micro Session -->
+        <div id="page-micro" class="hidden">
+            <h2>Micro Session</h2>
+            <div id="micro-content">
+                <div class="loading">載入題目中...</div>
+            </div>
+        </div>
+        
+        <!-- Evaluation -->
+        <div id="page-evaluation" class="hidden">
+            <h2>評定結果</h2>
+            <div id="eval-content">
+                <div class="loading">計算中...</div>
+            </div>
+        </div>
+        
+        <!-- Challenge -->
+        <div id="page-challenge" class="hidden">
+            <h2>專項挑戰</h2>
+            <p class="subtitle" id="challenge-dim"></p>
+            <div id="challenge-content">
+                <div class="loading">載入題目中...</div>
+            </div>
+        </div>
+        
+        <!-- Challenge Result -->
+        <div id="page-challenge-result" class="hidden">
+            <h2>挑戰完成</h2>
+            <div id="challenge-result-content"></div>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================================
+        // 配置
+        // ============================================================
+        // 生产环境默认 API（部署后替换为真实 URL）
+        const DEFAULT_API = 'https://dse-economics-oc.onrender.com';
+        
+        // URL 参数优先级：?api= > DEFAULT_API > localhost（调试用）
+        const urlParams = new URLSearchParams(window.location.search);
+        const API_PARAM = urlParams.get('api');
+        const BASE_URL = API_PARAM || DEFAULT_API;
+        
+        // localStorage key
+        const STORAGE_KEY_USER_ID = 'oc_mvp_user_id';
+        
+        // console.log 便于 debug
+        console.log('API Endpoint:', BASE_URL);
+        
+        // ============================================================
+        // 全局状态
+        // ============================================================
+        let currentUser = '';
+        let currentQuestions = [];
+        let currentAnswers = {};
+        let currentQuestionIndex = 0;
+        let currentWeakDimension = '';
+        let apiReady = false;
+        
+        // ============================================================
+        // 工具函数
+        // ============================================================
+        function showPage(pageId) {
+            document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById(pageId).classList.remove('hidden');
+        }
+        
+        function showMessage(msg, type = 'info') {
+            return `<div class="message message-${type}">${msg}</div>`;
+        }
+        
+        function dimToCn(dim) {
+            const map = {
+                'COST_STRUCTURE': '成本結構',
+                'ALT_LOGIC': '比較邏輯',
+                'SUNK_FILTER': '沉沒成本'
+            };
+            return map[dim] || dim;
+        }
+        
+        // 检查 API 是否可用
+        async function checkApiHealth() {
+            try {
+                const response = await fetch(`${BASE_URL}/health`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    apiReady = true;
+                    return true;
+                }
+            } catch (e) {
+                console.error('Health check failed:', e);
+            }
+            return false;
+        }
+        
+        async function apiCall(endpoint, options = {}) {
+            if (!apiReady) {
+                throw new Error('API 未就緒，請刷新頁面');
+            }
+            const url = `${BASE_URL}${endpoint}`;
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({detail: 'Unknown error'}));
+                throw new Error(err.detail || 'API error');
+            }
+            return response.json();
+        }
+        
+        // ============================================================
+        // 页面: Login
+        // ============================================================
+        
+        // 获取上次保存的 user_id
+        function getSavedUserId() {
+            return localStorage.getItem(STORAGE_KEY_USER_ID) || '';
+        }
+        
+        // 保存 user_id
+        function saveUserId(userId) {
+            localStorage.setItem(STORAGE_KEY_USER_ID, userId);
+        }
+        
+        // 初始化：先检查 API（带超时和重试逻辑）
+        async function initApp() {
+            const loginPage = document.getElementById('page-login');
+            
+            // 显示加载状态（冷启动提示）
+            loginPage.innerHTML = `
+                <h1>DSE Economics - 機會成本練習</h1>
+                <p class="subtitle">正在連接服務器...</p>
+                <div style="text-align:center;padding:20px;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top:12px;font-size:12px;color:#666;">
+                        首次打開可能需要 10–30 秒啟動（免費服務器）
+                    </p>
+                </div>
+                <p style="font-size:11px;color:#999;margin-top:16px;">API: ${BASE_URL}</p>
+            `;
+            
+            // 带超时的健康检查（最多等 5 秒显示提示）
+            let isHealthy = false;
+            const healthCheckPromise = checkApiHealth();
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 5000));
+            
+            try {
+                isHealthy = await Promise.race([healthCheckPromise, timeoutPromise]);
+            } catch (e) {
+                console.error('Health check error:', e);
+            }
+            
+            // 如果还没成功，再等一下（总共最多 10 秒）
+            if (!isHealthy) {
+                loginPage.innerHTML = `
+                    <h1>DSE Economics - 機會成本練習</h1>
+                    <p class="subtitle">服務器正在啟動中...</p>
+                    <div style="text-align:center;padding:20px;">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top:12px;font-size:14px;color:#666;">
+                            免費服務器首次啟動需要 10–30 秒<br>請稍候...
+                        </p>
+                    </div>
+                    <button class="btn" onclick="initApp()">重新檢查</button>
+                    <p style="font-size:11px;color:#999;margin-top:16px;">API: ${BASE_URL}</p>
+                `;
+                
+                // 再等 10 秒让用户看
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                
+                // 再次检查
+                isHealthy = await checkApiHealth();
+            }
+            
+            if (!isHealthy) {
+                loginPage.innerHTML = `
+                    <h1>⚠️ 連接失敗</h1>
+                    <p class="subtitle">無法連接到服務器</p>
+                    <div class="message message-error">
+                        <p><strong>無法連接服務器，請稍後再試</strong></p>
+                        <p style="margin-top:8px;font-size:12px;">如果持續失敗，請聯繫老師</p>
+                        <p style="font-size:11px;margin-top:12px;">當前 API: <code>${BASE_URL}</code></p>
+                    </div>
+                    <button class="btn btn-primary" onclick="initApp()">重試連接</button>
+                `;
+                return;
+            }
+            
+            // API 就绪，显示登录页面（带 localStorage 逻辑）
+            const savedUserId = getSavedUserId();
+            
+            if (savedUserId) {
+                // 有保存的用户，显示"继续"按钮
+                loginPage.innerHTML = `
+                    <h1>DSE Economics - 機會成本練習</h1>
+                    <p class="subtitle">弱點識別系統 - MVP</p>
+                    <input type="text" id="input-user-id" placeholder="輸入你的名字或編號" value="${savedUserId}" />
+                    <button class="btn btn-primary" onclick="startApp()">開始練習</button>
+                    <button class="btn" style="margin-top:8px;background:#4CAF50;color:white;" onclick="continueAsLastUser()">繼續上次 (${savedUserId})</button>
+                    <p style="font-size:11px;color:#999;margin-top:16px;">API: ${BASE_URL}</p>
+                `;
+            } else {
+                // 没有保存的用户
+                loginPage.innerHTML = `
+                    <h1>DSE Economics - 機會成本練習</h1>
+                    <p class="subtitle">弱點識別系統 - MVP</p>
+                    <input type="text" id="input-user-id" placeholder="輸入你的名字或編號" />
+                    <button class="btn btn-primary" onclick="startApp()">開始練習</button>
+                    <p style="font-size:11px;color:#999;margin-top:16px;">API: ${BASE_URL}</p>
+                `;
+            }
+        }
+        
+        // 继续上次用户
+        async function continueAsLastUser() {
+            const savedUserId = getSavedUserId();
+            if (savedUserId) {
+                currentUser = savedUserId;
+                await showDashboard();
+            }
+        }
+        
+        // 頁面加載時自動檢查
+        window.onload = initApp;
+        
+        function startApp() {
+            const userId = document.getElementById('input-user-id').value.trim();
+            if (!userId) {
+                alert('請輸入名字或編號');
+                return;
+            }
+            currentUser = userId;
+            saveUserId(userId);  // 保存到 localStorage
+            refreshDashboard();
+        }
+        
+        // ============================================================
+        // 页面: Dashboard
+        // ============================================================
+        async function refreshDashboard() {
+            try {
+                const data = await apiCall(`/dashboard?user_id=${currentUser}`);
+                
+                document.getElementById('dashboard-user').textContent = `學生: ${currentUser}`;
+                
+                // Buffer 进度
+                const buffer = data.eval_buffer;
+                const bufferPercent = (buffer.current / buffer.max) * 100;
+                document.getElementById('buffer-progress').style.width = `${bufferPercent}%`;
+                document.getElementById('buffer-text').textContent = `${buffer.current} / ${buffer.max}`;
+                
+                // 弱点显示
+                const weaknessDiv = document.getElementById('weakness-display');
+                if (data.primary_weakness) {
+                    const w = data.primary_weakness;
+                    if (w.status === 'WEAK_DETECTED') {
+                        weaknessDiv.innerHTML = `
+                            <div class="weakness-box">
+                                <div class="weakness-title">⚠️ 當前弱點</div>
+                                <div class="weakness-desc">${w.dimension_cn} (還需 ${w.remaining} 次達標)</div>
+                            </div>
+                        `;
+                    } else if (w.status === 'STABLE') {
+                        weaknessDiv.innerHTML = `
+                            <div class="stable-box">
+                                <div class="stable-title">✅ ${w.dimension_cn} 已穩定</div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    weaknessDiv.innerHTML = `
+                        <div class="stable-box">
+                            <div class="stable-title">✅ 各維度表現良好</div>
+                        </div>
+                    `;
+                }
+                
+                showPage('page-dashboard');
+            } catch (e) {
+                alert('載入失敗: ' + e.message);
+            }
+        }
+        
+        // ============================================================
+        // 页面: Micro Session
+        // ============================================================
+        async function goToMicro() {
+            currentQuestionIndex = 0;
+            currentAnswers = {};
+            
+            try {
+                const data = await apiCall('/micro/start', {
+                    method: 'POST',
+                    body: JSON.stringify({ user_id: currentUser, topic_id: '1.2' })
+                });
+                
+                currentQuestions = data.questions;
+                renderMicroQuestion();
+                showPage('page-micro');
+            } catch (e) {
+                alert('載入題目失敗: ' + e.message);
+            }
+        }
+        
+        function renderMicroQuestion() {
+            const q = currentQuestions[currentQuestionIndex];
+            const total = currentQuestions.length;
+            
+            let html = `
+                <div class="question-card">
+                    <p class="question-num">題目 ${currentQuestionIndex + 1} / ${total}</p>
+                    <p class="question-stem">${q.stem}</p>
+                </div>
+            `;
+            
+            // 选项
+            const options = ['A', 'B', 'C', 'D'];
+            for (const opt of options) {
+                if (!q.options[opt]) continue;
+                const selected = currentAnswers[q.question_id] === opt ? 'selected' : '';
+                html += `
+                    <div class="option ${selected}" onclick="selectOption('${q.question_id}', '${opt}')">
+                        <span class="option-label">${opt}.</span>
+                        ${q.options[opt]}
+                    </div>
+                `;
+            }
+            
+            // 导航按钮
+            let navHtml = '';
+            if (currentQuestionIndex > 0) {
+                navHtml += `<button class="btn btn-outline" style="width:48%" onclick="prevMicroQuestion()">上一題</button>`;
+            }
+            
+            if (currentQuestionIndex < total - 1) {
+                navHtml += `<button class="btn" style="width:48%;float:right" onclick="nextMicroQuestion()" id="btn-next">下一題</button>`;
+            } else {
+                navHtml += `<button class="btn btn-secondary" style="width:48%;float:right" onclick="submitMicro()" id="btn-submit">提交</button>`;
+            }
+            
+            html += `<div style="overflow:hidden;margin-top:16px">${navHtml}</div>`;
+            
+            document.getElementById('micro-content').innerHTML = html;
+            updateMicroButtonState();
+        }
+        
+        function selectOption(qid, opt) {
+            currentAnswers[qid] = opt;
+            renderMicroQuestion();
+        }
+        
+        function updateMicroButtonState() {
+            const q = currentQuestions[currentQuestionIndex];
+            const btnId = currentQuestionIndex < currentQuestions.length - 1 ? 'btn-next' : 'btn-submit';
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.disabled = !currentAnswers[q.question_id];
+            }
+        }
+        
+        function prevMicroQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderMicroQuestion();
+            }
+        }
+        
+        function nextMicroQuestion() {
+            if (currentQuestionIndex < currentQuestions.length - 1) {
+                currentQuestionIndex++;
+                renderMicroQuestion();
+            }
+        }
+        
+        async function submitMicro() {
+            // 收集 attempts
+            const attempts = [];
+            for (const q of currentQuestions) {
+                const selected = currentAnswers[q.question_id];
+                if (selected) {
+                    attempts.push({
+                        question_id: q.question_id,
+                        selected_option: selected
+                    });
+                }
+            }
+            
+            if (attempts.length === 0) {
+                alert('請至少回答一題');
+                return;
+            }
+            
+            try {
+                const data = await apiCall('/micro/submit', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: currentUser,
+                        topic_id: '1.2',
+                        attempts: attempts,
+                        is_incomplete: attempts.length < currentQuestions.length
+                    })
+                });
+                
+                // 检查是否需要进入 evaluation
+                if (data.eval_ready) {
+                    goToEvaluation();
+                } else {
+                    // 回到 dashboard
+                    alert(`Micro Session 完成！\n正確率: ${(data.micro_summary.overall_acc * 100).toFixed(0)}%`);
+                    refreshDashboard();
+                }
+            } catch (e) {
+                alert('提交失敗: ' + e.message);
+            }
+        }
+        
+        // ============================================================
+        // 页面: Evaluation
+        // ============================================================
+        async function goToEvaluation() {
+            try {
+                const data = await apiCall(`/evaluation?user_id=${currentUser}`);
+                const evalResult = data.eval_result;
+                
+                let html = `
+                    <div class="result-card">
+                        <div class="result-percent">${(evalResult.overall_acc * 100).toFixed(0)}%</div>
+                        <div class="result-label">整體正確率 (${evalResult.total_correct} / ${evalResult.total_attempted})</div>
+                    </div>
+                `;
+                
+                // 维度进度条
+                html += '<div class="dashboard-card">';
+                for (const dim of ['COST_STRUCTURE', 'ALT_LOGIC', 'SUNK_FILTER']) {
+                    const dimData = evalResult.all_dimensions[dim];
+                    if (!dimData) continue;
+                    
+                    const acc = dimData.acc || 0;
+                    const count = dimData.count || 0;
+                    let statusClass = 'ok';
+                    let statusText = '✅';
+                    
+                    if (dimData.status === 'WEAK_DETECTED') {
+                        statusClass = 'weak';
+                        statusText = '⚠️ 弱點';
+                    } else if (dimData.status === 'NEEDS_ATTENTION') {
+                        statusClass = 'attention';
+                        statusText = '⚠️ 關注';
+                    } else if (dimData.status === 'INSUFFICIENT') {
+                        statusClass = 'insufficient';
+                        statusText = '❓ 不足';
+                    }
+                    
+                    html += `
+                        <div class="dim-row">
+                            <div class="dim-name">${dimToCn(dim)}</div>
+                            <div class="dim-bar">
+                                <div class="dim-fill ${statusClass}" style="width: ${acc * 100}%"></div>
+                            </div>
+                            <div class="dim-percent">${(acc * 100).toFixed(0)}%</div>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+                
+                // 弱点消息
+                const wd = evalResult.weakness_detection;
+                if (wd.status === 'WEAK_DETECTED') {
+                    html += showMessage(wd.message || '檢測到弱點', 'warning');
+                } else if (wd.status === 'INSUFFICIENT_DATA') {
+                    html += showMessage('數據不足，繼續完成更多練習后再查看評定', 'info');
+                } else if (wd.status === 'ALL_OK') {
+                    html += showMessage('整體表現良好，繼續保持！', 'success');
+                }
+                
+                // 按钮
+                if (wd.status === 'WEAK_DETECTED') {
+                    currentWeakDimension = wd.weak_dimension;
+                    html += `<button class="btn" onclick="goToChallenge()">開始專項挑戰</button>`;
+                }
+                
+                html += `<button class="btn btn-outline" onclick="refreshDashboard()">返回</button>`;
+                
+                document.getElementById('eval-content').innerHTML = html;
+                showPage('page-evaluation');
+            } catch (e) {
+                alert('評定失敗: ' + e.message);
+                refreshDashboard();
+            }
+        }
+        
+        // ============================================================
+        // 页面: Challenge
+        // ============================================================
+        async function goToChallenge() {
+            currentQuestionIndex = 0;
+            currentAnswers = {};
+            
+            try {
+                const data = await apiCall('/challenge/start', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: currentUser,
+                        topic_id: '1.2',
+                        weak_dimension: currentWeakDimension,
+                        pool_policy: 'strict'
+                    })
+                });
+                
+                currentQuestions = data.questions;
+                document.getElementById('challenge-dim').textContent = `針對: ${dimToCn(currentWeakDimension)}`;
+                renderChallengeQuestion();
+                showPage('page-challenge');
+            } catch (e) {
+                alert('載入挑戰題目失敗: ' + e.message);
+            }
+        }
+        
+        function renderChallengeQuestion() {
+            const q = currentQuestions[currentQuestionIndex];
+            const total = currentQuestions.length;
+            const state = currentQuestions[0]?.ability_dimension || ''; // placeholder
+            
+            let html = `
+                <div class="question-card">
+                    <p class="question-num">題目 ${currentQuestionIndex + 1} / ${total}</p>
+                    <p class="question-stem">${q.stem}</p>
+                </div>
+            `;
+            
+            const options = ['A', 'B', 'C', 'D'];
+            for (const opt of options) {
+                if (!q.options[opt]) continue;
+                const selected = currentAnswers[q.question_id] === opt ? 'selected' : '';
+                html += `
+                    <div class="option ${selected}" onclick="selectChallengeOption('${q.question_id}', '${opt}')">
+                        <span class="option-label">${opt}.</span>
+                        ${q.options[opt]}
+                    </div>
+                `;
+            }
+            
+            let navHtml = '';
+            if (currentQuestionIndex > 0) {
+                navHtml += `<button class="btn btn-outline" style="width:48%" onclick="prevChallengeQuestion()">上一題</button>`;
+            }
+            
+            if (currentQuestionIndex < total - 1) {
+                navHtml += `<button class="btn" style="width:48%;float:right" onclick="nextChallengeQuestion()" id="btn-challenge-next">下一題</button>`;
+            } else {
+                navHtml += `<button class="btn btn-secondary" style="width:48%;float:right" onclick="submitChallenge()" id="btn-challenge-submit">提交</button>`;
+            }
+            
+            html += `<div style="overflow:hidden;margin-top:16px">${navHtml}</div>`;
+            
+            document.getElementById('challenge-content').innerHTML = html;
+            updateChallengeButtonState();
+        }
+        
+        function selectChallengeOption(qid, opt) {
+            currentAnswers[qid] = opt;
+            renderChallengeQuestion();
+        }
+        
+        function updateChallengeButtonState() {
+            const q = currentQuestions[currentQuestionIndex];
+            const btnId = currentQuestionIndex < currentQuestions.length - 1 ? 'btn-challenge-next' : 'btn-challenge-submit';
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.disabled = !currentAnswers[q.question_id];
+            }
+        }
+        
+        function prevChallengeQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderChallengeQuestion();
+            }
+        }
+        
+        function nextChallengeQuestion() {
+            if (currentQuestionIndex < currentQuestions.length - 1) {
+                currentQuestionIndex++;
+                renderChallengeQuestion();
+            }
+        }
+        
+        async function submitChallenge() {
+            const attempts = [];
+            for (const q of currentQuestions) {
+                const selected = currentAnswers[q.question_id];
+                if (selected) {
+                    attempts.push({
+                        question_id: q.question_id,
+                        selected_option: selected
+                    });
+                }
+            }
+            
+            if (attempts.length === 0) {
+                alert('請至少回答一題');
+                return;
+            }
+            
+            try {
+                const data = await apiCall('/challenge/submit', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: currentUser,
+                        topic_id: '1.2',
+                        weak_dimension: currentWeakDimension,
+                        attempts: attempts
+                    })
+                });
+                
+                // 显示结果
+                const acc = data.challenge_acc;
+                const state = data.new_state;
+                
+                let html = `
+                    <div class="result-card">
+                        <div class="result-percent">${(acc * 100).toFixed(0)}%</div>
+                        <div class="result-label">挑戰正確率</div>
+                    </div>
+                `;
+                
+                if (state.status === 'STABLE') {
+                    html += showMessage('🎉 恭喜！弱點已解除！', 'success');
+                } else {
+                    html += showMessage(state.message || '繼續加油', 'warning');
+                }
+                
+                html += `<button class="btn" onclick="refreshDashboard()">返回 Dashboard</button>`;
+                
+                document.getElementById('challenge-result-content').innerHTML = html;
+                showPage('page-challenge-result');
+            } catch (e) {
+                alert('提交失敗: ' + e.message);
+            }
+        }
+        
+        // ============================================================
+        // 初始化
+        // ============================================================
+        showPage('page-login');
+    </script>
+</body>
+</html>
