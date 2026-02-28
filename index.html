@@ -316,12 +316,13 @@
         // 配置
         // ============================================================
         // 生产环境默认 API（部署后替换为真实 URL）
-        const DEFAULT_API = 'https://oc-mvp-backend.onrender.com';
+        const DEFAULT_API = 'https://dse-economics-oc.onrender.com';
         
         // URL 参数优先级：?api= > DEFAULT_API > localhost（调试用）
         const urlParams = new URLSearchParams(window.location.search);
         const API_PARAM = urlParams.get('api');
-        const BASE_URL = API_PARAM || DEFAULT_API;
+        const BASE_URL_RAW = API_PARAM || DEFAULT_API;
+        const BASE_URL = BASE_URL_RAW.replace(/^http:\/\//i, 'https://');
         
         // localStorage key
         const STORAGE_KEY_USER_ID = 'oc_mvp_user_id';
@@ -507,8 +508,14 @@
                 await showDashboard();
             }
         }
+
+        // 显示 Dashboard 页面（wrapper）
+        async function showDashboard() {
+            showPage('page-dashboard');
+            await refreshDashboard();
+        }
         
-        // 頁面加載時自動檢查
+        // 页面: Dashboard
         window.onload = initApp;
         
         function startApp() {
