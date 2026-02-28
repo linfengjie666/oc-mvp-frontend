@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSE Economics - Opportunity Cost 练习</title>
+    <title>DSE Economics - Opportunity Cost 練習</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -150,11 +153,23 @@
             color: #666;
             margin-bottom: 8px;
         }
+        .question-source {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .question-stem, .option-text {
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
         .question-stem {
             font-size: 16px;
-            line-height: 1.5;
+            line-height: 1.6;
             margin-bottom: 16px;
-            white-space: pre-wrap;
         }
         .option {
             padding: 14px;
@@ -175,6 +190,9 @@
         .option-label {
             font-weight: 600;
             margin-right: 8px;
+        }
+        .option-text {
+            font-size: 15px;
         }
         
         /* Result */
@@ -249,6 +267,93 @@
         
         /* Hidden */
         .hidden { display: none; }
+        
+        /* Feedback Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 420px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .feedback-header {
+            text-align: center;
+            padding: 12px 0;
+            margin-bottom: 16px;
+        }
+        .feedback-header.correct {
+            color: #34C759;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .feedback-header.wrong {
+            color: #FF3B30;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .feedback-answer {
+            background: #f8f8f8;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .feedback-answer-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .feedback-answer-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        .feedback-section {
+            margin-bottom: 12px;
+        }
+        .feedback-section-title {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .feedback-section-content {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #333;
+        }
+        .feedback-source {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+        .feedback-loading {
+            text-align: center;
+            padding: 40px;
+        }
+        .feedback-error {
+            text-align: center;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -309,6 +414,18 @@
             <h2>挑戰完成</h2>
             <div id="challenge-result-content"></div>
         </div>
+        
+        <!-- Intro Page -->
+        <div id="page-intro" class="hidden"></div>
+    </div>
+    
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div id="feedback-body">
+                <!-- Dynamic content -->
+            </div>
+        </div>
     </div>
     
     <script>
@@ -316,7 +433,7 @@
         // 配置
         // ============================================================
         // 生产环境默认 API（部署后替换为真实 URL）
-        const DEFAULT_API = 'https://oc-mvp-backend.onrender.com';
+        const DEFAULT_API = 'https://dse-economics-oc.onrender.com';
         
         // URL 参数优先级：?api= > DEFAULT_API > localhost（调试用）
         const urlParams = new URLSearchParams(window.location.search);
@@ -339,6 +456,7 @@
         let currentAnswers = {};
         let currentQuestionIndex = 0;
         let currentWeakDimension = '';
+        let currentSessionType = ''; // 'micro' or 'challenge'
         let apiReady = false;
         
         // ============================================================
@@ -360,6 +478,51 @@
                 'SUNK_FILTER': '沉沒成本'
             };
             return map[dim] || dim;
+        }
+        
+        // 清洗题干文本
+        function formatText(s) {
+            if (!s) return '';
+            // 统一换行
+            let text = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            // 删除或替换"疑似表格行"（包含大量 | 的行）
+            const lines = text.split('\n');
+            const filteredLines = lines.filter(line => {
+                const pipeCount = (line.match(/\|/g) || []).length;
+                // 如果一行有超过 5 个 |，认为是表格行，删除
+                return pipeCount <= 5;
+            });
+            text = filteredLines.join('\n');
+            // 压缩多余空格（保留换行）
+            text = text.replace(/[ \t]+/g, ' ');
+            // 连续空行最多保留 2 行
+            text = text.replace(/\n{3,}/g, '\n\n');
+            // trim
+            return text.trim();
+        }
+        
+        // 获取题目来源显示
+        function getQuestionSource(q) {
+            // 优先用 source 字段
+            if (q.source && q.source.year && q.source.paper) {
+                return `${q.source.year} ${q.source.paper} · ${q.question_id}`;
+            }
+            // 否则用 question_id
+            return q.question_id;
+        }
+        
+        // KaTeX math rendering helper
+        function renderMath(element) {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(element, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false},
+                        {left: "\\(", right: "\\)", display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
         }
         
         // 检查 API 是否可用
@@ -527,6 +690,90 @@
             }
             currentUser = userId;
             saveUserId(userId);  // 保存到 localStorage
+            
+            // Check if first-time user
+            if (!localStorage.getItem("oc_mvp_seen_intro")) {
+                showIntroPage();
+            } else {
+                refreshDashboard();
+            }
+        }
+        
+        function showIntroPage() {
+            document.getElementById('page-intro').innerHTML = `
+                <div style="text-align:center; margin-bottom:24px;">
+                    <h1 style="font-size:22px; margin-bottom:8px;">機會成本</h1>
+                    <p style="font-size:13px; color:#007AFF; font-weight:600; 
+                       letter-spacing:1px;">弱點識別系統</p>
+                    <p style="font-size:14px; color:#666; margin-top:12px; line-height:1.6;">
+                        系統會分析你在 3 個能力維度的表現<br>找出弱點，給你定制專項訓練
+                    </p>
+                </div>
+
+                <div style="display:flex; gap:10px; margin-bottom:24px;">
+                    <div style="flex:1; background:#FFF8E1; border-radius:10px; 
+                                padding:14px; text-align:center;">
+                        <div style="font-size:24px;">💰</div>
+                        <div style="font-size:13px; font-weight:600; margin:6px 0 4px;">成本結構</div>
+                        <div style="font-size:11px; color:#666; line-height:1.4;">
+                            識別完整成本（金錢＋時間）
+                        </div>
+                    </div>
+                    <div style="flex:1; background:#E8F5E9; border-radius:10px; 
+                                padding:14px; text-align:center;">
+                        <div style="font-size:24px;">⚖️</div>
+                        <div style="font-size:13px; font-weight:600; margin:6px 0 4px;">比較邏輯</div>
+                        <div style="font-size:11px; color:#666; line-height:1.4;">
+                            找出最高價值的放棄選擇
+                        </div>
+                    </div>
+                    <div style="flex:1; background:#FCE4EC; border-radius:10px; 
+                                padding:14px; text-align:center;">
+                        <div style="font-size:24px;">🚫</div>
+                        <div style="font-size:13px; font-weight:600; margin:6px 0 4px;">沉沒成本</div>
+                        <div style="font-size:11px; color:#666; line-height:1.4;">
+                            排除已付不可追回的成本
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background:#f8f8f8; border-radius:10px; padding:16px; 
+                            margin-bottom:24px;">
+                    <p style="font-size:12px; color:#999; margin-bottom:10px; 
+                       text-align:center;">你的學習路徑</p>
+                    <div style="display:flex; align-items:center; justify-content:center; 
+                                gap:6px; flex-wrap:wrap;">
+                        <span style="background:#007AFF; color:white; border-radius:6px; 
+                                     padding:6px 10px; font-size:12px; font-weight:600;">
+                            練習 × 3
+                        </span>
+                        <span style="color:#ccc;">→</span>
+                        <span style="background:#FF9500; color:white; border-radius:6px; 
+                                     padding:6px 10px; font-size:12px; font-weight:600;">
+                            弱點評定
+                        </span>
+                        <span style="color:#ccc;">→</span>
+                        <span style="background:#FF3B30; color:white; border-radius:6px; 
+                                     padding:6px 10px; font-size:12px; font-weight:600;">
+                            專項挑戰
+                        </span>
+                        <span style="color:#ccc;">→</span>
+                        <span style="background:#34C759; color:white; border-radius:6px; 
+                                     padding:6px 10px; font-size:12px; font-weight:600;">
+                            ✓ STABLE
+                        </span>
+                    </div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="completeIntro()">
+                    明白了，開始！
+                </button>
+            `;
+            showPage('page-intro');
+        }
+        
+        function completeIntro() {
+            localStorage.setItem("oc_mvp_seen_intro", "1");
             refreshDashboard();
         }
         
@@ -578,11 +825,142 @@
         }
         
         // ============================================================
+        // Feedback Modal Functions
+        // ============================================================
+        function showFeedbackModal() {
+            document.getElementById('feedback-modal').classList.remove('hidden');
+        }
+        
+        function hideFeedbackModal() {
+            document.getElementById('feedback-modal').classList.add('hidden');
+        }
+        
+        async function showQuestionFeedback(questionId, selectedOption) {
+            const modalBody = document.getElementById('feedback-body');
+            showFeedbackModal();
+            
+            // 显示加载状态
+            modalBody.innerHTML = `
+                <div class="feedback-loading">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top:12px;color:#666;">載入解釋中...</p>
+                </div>
+            `;
+            
+            try {
+                const data = await apiCall('/question/feedback', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: currentUser,
+                        question_id: questionId,
+                        selected_option: selectedOption
+                    })
+                });
+                
+                // 构建解释内容
+                const isCorrect = data.is_correct;
+                const headerClass = isCorrect ? 'correct' : 'wrong';
+                const headerText = isCorrect ? '✅ 正確！' : '❌ 錯誤';
+                
+                let explainHtml = '';
+                
+                // why_correct_right / logic_flow
+                if (data.explain.why_correct_right || data.explain.logic_flow) {
+                    explainHtml += `
+                        <div class="feedback-section">
+                            <div class="feedback-section-title">📝 正確答案解析</div>
+                            <div class="feedback-section-content">${formatText(data.explain.why_correct_right || data.explain.logic_flow)}</div>
+                        </div>
+                    `;
+                }
+                
+                // why_selected_wrong（如果选错）
+                if (!isCorrect && data.explain.why_selected_wrong) {
+                    explainHtml += `
+                        <div class="feedback-section">
+                            <div class="feedback-section-title">❌ 你選錯了</div>
+                            <div class="feedback-section-content">${formatText(data.explain.why_selected_wrong)}</div>
+                        </div>
+                    `;
+                }
+                
+                // common_trap
+                if (data.explain.common_trap) {
+                    explainHtml += `
+                        <div class="feedback-section">
+                            <div class="feedback-section-title">⚠️ 常見陷阱</div>
+                            <div class="feedback-section-content">${formatText(data.explain.common_trap)}</div>
+                        </div>
+                    `;
+                }
+                
+                // 来源
+                const sourceText = (data.source && data.source.year) 
+                    ? `${data.source.year} ${data.source.paper}`
+                    : questionId;
+                
+                modalBody.innerHTML = `
+                    <div class="feedback-header ${headerClass}">${headerText}</div>
+                    
+                    <div class="feedback-answer">
+                        <div class="feedback-answer-label">正確答案</div>
+                        <div class="feedback-answer-value">${data.correct_option}</div>
+                    </div>
+                    
+                    ${explainHtml}
+                    
+                    <div class="feedback-source">${sourceText}</div>
+                    
+                    <button class="btn" style="margin-top:16px;" onclick="handleFeedbackContinue()">繼續</button>
+                `;
+                
+                // Render KaTeX math in modal
+                renderMath(modalBody);
+                
+            } catch (e) {
+                // 失败处理
+                modalBody.innerHTML = `
+                    <div class="feedback-error">
+                        <p style="color:#FF3B30;font-weight:600;">⚠️ 網絡/服務器忙</p>
+                        <p style="margin-top:8px;color:#666;">無法載入解釋，請重試</p>
+                        <button class="btn btn-outline" style="margin-top:16px;" onclick="retryFeedback('${questionId}', '${selectedOption}')">重試</button>
+                    </div>
+                `;
+            }
+        }
+        
+        function retryFeedback(questionId, selectedOption) {
+            showQuestionFeedback(questionId, selectedOption);
+        }
+        
+        // 反馈后的继续处理
+        function handleFeedbackContinue() {
+            hideFeedbackModal();
+            
+            if (currentSessionType === 'micro') {
+                // Micro Session
+                if (currentQuestionIndex < currentQuestions.length - 1) {
+                    nextMicroQuestion();
+                } else {
+                    submitMicro();
+                }
+            } else if (currentSessionType === 'challenge') {
+                // Challenge
+                if (currentQuestionIndex < currentQuestions.length - 1) {
+                    nextChallengeQuestion();
+                } else {
+                    submitChallenge();
+                }
+            }
+        }
+        
+        // ============================================================
         // 页面: Micro Session
         // ============================================================
         async function goToMicro() {
             currentQuestionIndex = 0;
             currentAnswers = {};
+            currentSessionType = 'micro';
             
             try {
                 const data = await apiCall('/micro/start', {
@@ -605,7 +983,8 @@
             let html = `
                 <div class="question-card">
                     <p class="question-num">題目 ${currentQuestionIndex + 1} / ${total}</p>
-                    <p class="question-stem">${q.stem}</p>
+                    <p class="question-source">${getQuestionSource(q)}</p>
+                    <p class="question-stem">${formatText(q.stem)}</p>
                 </div>
             `;
             
@@ -617,27 +996,30 @@
                 html += `
                     <div class="option ${selected}" onclick="selectOption('${q.question_id}', '${opt}')">
                         <span class="option-label">${opt}.</span>
-                        ${q.options[opt]}
+                        <span class="option-text">${formatText(q.options[opt])}</span>
                     </div>
                 `;
             }
             
-            // 导航按钮
+            // 导航按钮 - 改为"本题确认"按钮
             let navHtml = '';
             if (currentQuestionIndex > 0) {
                 navHtml += `<button class="btn btn-outline" style="width:48%" onclick="prevMicroQuestion()">上一題</button>`;
             }
             
+            // 下一题/提交按钮改为"本题确认"（带反馈）
             if (currentQuestionIndex < total - 1) {
-                navHtml += `<button class="btn" style="width:48%;float:right" onclick="nextMicroQuestion()" id="btn-next">下一題</button>`;
+                navHtml += `<button class="btn" style="width:48%;float:right" onclick="confirmAndNextMicro()" id="btn-confirm">確認並下一題</button>`;
             } else {
-                navHtml += `<button class="btn btn-secondary" style="width:48%;float:right" onclick="submitMicro()" id="btn-submit">提交</button>`;
+                navHtml += `<button class="btn btn-secondary" style="width:48%;float:right" onclick="confirmAndSubmitMicro()" id="btn-confirm">確認並提交</button>`;
             }
             
             html += `<div style="overflow:hidden;margin-top:16px">${navHtml}</div>`;
             
             document.getElementById('micro-content').innerHTML = html;
             updateMicroButtonState();
+            // Render KaTeX math
+            renderMath(document.getElementById('micro-content'));
         }
         
         function selectOption(qid, opt) {
@@ -647,8 +1029,7 @@
         
         function updateMicroButtonState() {
             const q = currentQuestions[currentQuestionIndex];
-            const btnId = currentQuestionIndex < currentQuestions.length - 1 ? 'btn-next' : 'btn-submit';
-            const btn = document.getElementById(btnId);
+            const btn = document.getElementById('btn-confirm');
             if (btn) {
                 btn.disabled = !currentAnswers[q.question_id];
             }
@@ -659,6 +1040,28 @@
                 currentQuestionIndex--;
                 renderMicroQuestion();
             }
+        }
+        
+        // Micro: 确认并进入下一题（带反馈）
+        function confirmAndNextMicro() {
+            const q = currentQuestions[currentQuestionIndex];
+            const selected = currentAnswers[q.question_id];
+            if (!selected) {
+                alert('請選擇一個選項');
+                return;
+            }
+            showQuestionFeedback(q.question_id, selected);
+        }
+        
+        // Micro: 确认并提交（带反馈）
+        function confirmAndSubmitMicro() {
+            const q = currentQuestions[currentQuestionIndex];
+            const selected = currentAnswers[q.question_id];
+            if (!selected) {
+                alert('請選擇一個選項');
+                return;
+            }
+            showQuestionFeedback(q.question_id, selected);
         }
         
         function nextMicroQuestion() {
@@ -791,6 +1194,7 @@
         async function goToChallenge() {
             currentQuestionIndex = 0;
             currentAnswers = {};
+            currentSessionType = 'challenge';
             
             try {
                 const data = await apiCall('/challenge/start', {
@@ -815,12 +1219,12 @@
         function renderChallengeQuestion() {
             const q = currentQuestions[currentQuestionIndex];
             const total = currentQuestions.length;
-            const state = currentQuestions[0]?.ability_dimension || ''; // placeholder
             
             let html = `
                 <div class="question-card">
                     <p class="question-num">題目 ${currentQuestionIndex + 1} / ${total}</p>
-                    <p class="question-stem">${q.stem}</p>
+                    <p class="question-source">${getQuestionSource(q)}</p>
+                    <p class="question-stem">${formatText(q.stem)}</p>
                 </div>
             `;
             
@@ -831,26 +1235,29 @@
                 html += `
                     <div class="option ${selected}" onclick="selectChallengeOption('${q.question_id}', '${opt}')">
                         <span class="option-label">${opt}.</span>
-                        ${q.options[opt]}
+                        <span class="option-text">${formatText(q.options[opt])}</span>
                     </div>
                 `;
             }
             
+            // 导航按钮 - 改为"本题确认"按钮
             let navHtml = '';
             if (currentQuestionIndex > 0) {
                 navHtml += `<button class="btn btn-outline" style="width:48%" onclick="prevChallengeQuestion()">上一題</button>`;
             }
             
             if (currentQuestionIndex < total - 1) {
-                navHtml += `<button class="btn" style="width:48%;float:right" onclick="nextChallengeQuestion()" id="btn-challenge-next">下一題</button>`;
+                navHtml += `<button class="btn" style="width:48%;float:right" onclick="confirmAndNextChallenge()" id="btn-challenge-confirm">確認並下一題</button>`;
             } else {
-                navHtml += `<button class="btn btn-secondary" style="width:48%;float:right" onclick="submitChallenge()" id="btn-challenge-submit">提交</button>`;
+                navHtml += `<button class="btn btn-secondary" style="width:48%;float:right" onclick="confirmAndSubmitChallenge()" id="btn-challenge-confirm">確認並提交</button>`;
             }
             
             html += `<div style="overflow:hidden;margin-top:16px">${navHtml}</div>`;
             
             document.getElementById('challenge-content').innerHTML = html;
             updateChallengeButtonState();
+            // Render KaTeX math
+            renderMath(document.getElementById('challenge-content'));
         }
         
         function selectChallengeOption(qid, opt) {
@@ -860,8 +1267,7 @@
         
         function updateChallengeButtonState() {
             const q = currentQuestions[currentQuestionIndex];
-            const btnId = currentQuestionIndex < currentQuestions.length - 1 ? 'btn-challenge-next' : 'btn-challenge-submit';
-            const btn = document.getElementById(btnId);
+            const btn = document.getElementById('btn-challenge-confirm');
             if (btn) {
                 btn.disabled = !currentAnswers[q.question_id];
             }
@@ -872,6 +1278,28 @@
                 currentQuestionIndex--;
                 renderChallengeQuestion();
             }
+        }
+        
+        // Challenge: 确认并进入下一题（带反馈）
+        function confirmAndNextChallenge() {
+            const q = currentQuestions[currentQuestionIndex];
+            const selected = currentAnswers[q.question_id];
+            if (!selected) {
+                alert('請選擇一個選項');
+                return;
+            }
+            showQuestionFeedback(q.question_id, selected);
+        }
+        
+        // Challenge: 确认并提交（带反馈）
+        function confirmAndSubmitChallenge() {
+            const q = currentQuestions[currentQuestionIndex];
+            const selected = currentAnswers[q.question_id];
+            if (!selected) {
+                alert('請選擇一個選項');
+                return;
+            }
+            showQuestionFeedback(q.question_id, selected);
         }
         
         function nextChallengeQuestion() {
